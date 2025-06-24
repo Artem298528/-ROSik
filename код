@@ -1,86 +1,141 @@
+#include <WiFi.h>
 #include <Adafruit_NeoPixel.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 #define LED_PIN 14
 #define NUM_RING1 12  // Часы (по часовой стрелке)
-#define NUM_RING2 6    // Десятки минут (против часовой)
+#define NUM_RING2 6    // Десятки минут (против часовой стрелки)
 #define NUM_LEDS (NUM_RING1 + NUM_RING2)
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
-// Оранжевый цвет
-uint32_t orangeColor = strip.Color(255, 50, 0);
+// WiFi credentials
+const char* ssid = "robotx";
+const char* password = "78914040";
 
-// Текущее и целевое время
-int targetHours = 0;
-int targetMinutes = 0;
-unsigned long startMillis = 0;
-bool timeSet = false;
+// NTP settings
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 10800, 60000); // UTC+3 (10800 сек)
+
+int currentHours = 0;
+int currentMinutes = 0;
+bool timeUpdated = false;
+unsigned long lastNTPUpdate = 0;
+const long ntpUpdateInterval = 10000; // Обновление времени каждые 10 секунд
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial); // Ждем подключения монитора
+  while (!Serial); // Ожидание подключения Serial Monitor
   
   strip.begin();
   strip.setBrightness(50);
   strip.show();
   
-  Serial.println("\nСистема готова");
-  Serial.println("Введите целевое время в формате HH:MM:");
+  connectToWiFi();
+  timeClient.begin();
+  
+  Serial.println("\nГотов к работе");
 }
 
 void loop() {
-  // Обработка ввода времени
-  if (Serial.available() > 0) {
-    setTargetTime();
+  // Проверка соединения WiFi
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Потеряно соединение WiFi. Переподключение...");
+    connectToWiFi();
   }
   
-  // Если время установлено - отслеживаем его
-  if (timeSet) {
-    updateClock();
+  // Проверка ввода с Serial
+  if (Serial.available() > 0) {
+    handleSerialInput();
+  }
+  
+  // Автоматическое обновление времени с NTP
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastNTPUpdate >= ntpUpdateInterval) {
+    updateTimeFromNTP();
+    lastNTPUpdate = currentMillis;
+  }
+  
+  // Обновление отображения при изменении времени
+  if (timeUpdated) {
+    displayTime(currentHours, currentMinutes);
+    timeUpdated = false;
   }
   
   delay(100);
 }
 
-void setTargetTime() {
+void connectToWiFi() {
+  strip.fill(strip.Color(255, 0, 0)); // Красный - подключение
+  strip.show();
+  
+  Serial.println("\nПодключение к WiFi...");
+  WiFi.begin(ssid, password);
+
+  unsigned long startTime = millis();
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+    
+    if (millis() - startTime > 20000) {
+      Serial.println("\nОшибка подключения!");
+      return;
+    }
+  }
+
+  Serial.println("\nПодключено успешно!");
+  Serial.print("IP адрес: ");
+  Serial.println(WiFi.localIP());
+  
+  strip.fill(strip.Color(0, 255, 0)); // Зеленый - успех
+  strip.show();
+}
+
+void updateTimeFromNTP() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  
+  Serial.println("Обновление времени с NTP сервера...");
+  if (timeClient.update()) {
+    currentHours = timeClient.getHours();
+    currentMinutes = timeClient.getMinutes();
+    timeUpdated = true;
+    
+    Serial.print("Текущее время: ");
+    if (currentHours < 10) Serial.print("0");
+    Serial.print(currentHours);
+    Serial.print(":");
+    if (currentMinutes < 10) Serial.print("0");
+    Serial.println(currentMinutes);
+  } else {
+    Serial.println("Ошибка получения времени с NTP!");
+  }
+}
+
+void handleSerialInput() {
   String timeStr = Serial.readStringUntil('\n');
   timeStr.trim();
   
   if (timeStr.length() == 5 && timeStr.charAt(2) == ':') {
-    targetHours = timeStr.substring(0, 2).toInt();
-    targetMinutes = timeStr.substring(3, 5).toInt();
+    int newHours = timeStr.substring(0, 2).toInt();
+    int newMinutes = timeStr.substring(3, 5).toInt();
     
-    if (targetHours >= 0 && targetHours < 24 && targetMinutes >= 0 && targetMinutes < 60) {
-      startMillis = millis(); // Засекаем время ввода
-      timeSet = true;
+    if (newHours >= 0 && newHours < 24 && newMinutes >= 0 && newMinutes < 60) {
+      currentHours = newHours;
+      currentMinutes = newMinutes;
+      timeUpdated = true;
       
       Serial.print("Установлено время: ");
-      printTime(targetHours, targetMinutes);
+      if (currentHours < 10) Serial.print("0");
+      Serial.print(currentHours);
+      Serial.print(":");
+      if (currentMinutes < 10) Serial.print("0");
+      Serial.println(currentMinutes);
     } else {
-      Serial.println("Ошибка: некорректное время");
+      Serial.println("Ошибка: Некорректное время. Часы 0-23, минуты 0-59");
     }
   } else {
-    Serial.println("Ошибка: используйте формат HH:MM");
-  }
-}
-
-void updateClock() {
-  // Рассчитываем текущее виртуальное время
-  unsigned long currentMillis = millis();
-  unsigned long elapsedMinutes = (currentMillis - startMillis) / 60000;
-  
-  int currentHours = (targetHours + (elapsedMinutes + targetMinutes) / 60) % 24;
-  int currentMinutes = (targetMinutes + elapsedMinutes) % 60;
-  
-  // Отображаем текущее время
-  displayTime(currentHours, currentMinutes);
-  
-  // Выводим в монитор раз в секунду
-  static unsigned long lastPrint = 0;
-  if (currentMillis - lastPrint >= 1000) {
-    lastPrint = currentMillis;
-    Serial.print("Текущее время: ");
-    printTime(currentHours, currentMinutes);
+    Serial.println("Ошибка: Некорректный формат. Используйте HH:MM (например, 14:30)");
   }
 }
 
@@ -89,20 +144,12 @@ void displayTime(int hours, int minutes) {
   
   // Часы (по часовой стрелке)
   int hourLed = hours % 12;
-  strip.setPixelColor(hourLed, orangeColor);
+  strip.setPixelColor(hourLed, strip.Color(255, 50, 0)); // Оранжевый
   
-  // Десятки минут (против часовой)
-  int tens = minutes / 10;
-  int minuteLed = NUM_RING1 + (5 - tens % 6);
-  strip.setPixelColor(minuteLed, orangeColor);
+  // Десятки минут (против часовой стрелки)
+  int tensOfMinutes = minutes / 10;
+  int minuteLed = NUM_RING1 + (5 - (tensOfMinutes % 6));
+  strip.setPixelColor(minuteLed, strip.Color(255, 50, 0)); // Оранжевый
   
   strip.show();
-}
-
-void printTime(int h, int m) {
-  if (h < 10) Serial.print("0");
-  Serial.print(h);
-  Serial.print(":");
-  if (m < 10) Serial.print("0");
-  Serial.println(m);
 }
