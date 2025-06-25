@@ -29,14 +29,15 @@
 4. Система ответит: `Установлено время HH:MM`
 5. Часы автоматически синхронизируются с NTP каждые 10 секунд
 
-![photo_5391183245502182689_y](https://github.com/user-attachments/assets/40809be0-b4e1-
+![photo_5391183245502182709_y](https://github.com/user-attachments/assets/b479fb18-96da-4256-a5e3-6eb593329e48)
 
-## Видео работы
+## Видео и фото работы
 
 ![photo_5391183245502182709_y](https://github.com/user-attachments/assets/5cb8d61f-1b67-4895-a8c3-57ead8f317a8)
 
-## Установка и запуск
 
 
 https://github.com/user-attachments/assets/8b93c5c1-4af8-40e2-8f78-a5c5b98ba45c
+
+
 ускореная работа часов
