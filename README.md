@@ -23,15 +23,17 @@
 ## Как работают часы
 
 1. Включите робота
-2. Ждите некоторое время 
-3. Точное время выведится на ленте
-
-
 ![photo_5391183245502182689_y](https://github.com/user-attachments/assets/58ebbd89-baf1-4ab6-994c-ae0f73dbb732)
 
-## Видео и фото работы
+2. Ждите некоторое время 
+![photo_5397653248661383462_y](https://github.com/user-attachments/assets/90a51636-7758-4818-ba83-0426fa0ae4d4)
 
+3. Точное время выведится на ленте
 ![photo_5391183245502182709_y](https://github.com/user-attachments/assets/5cb8d61f-1b67-4895-a8c3-57ead8f317a8)
+
+
+
+## Видео работы
 
 
 
