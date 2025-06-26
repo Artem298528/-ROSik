@@ -36,8 +36,8 @@
 ## Видео работы
 
 
+![document_5398006500675319280](https://github.com/user-attachments/assets/27b7c085-1a71-4ec8-912c-62c84f76b16f)
 
-https://github.com/user-attachments/assets/8b93c5c1-4af8-40e2-8f78-a5c5b98ba45c
 
 
 Ускореная работа часов
