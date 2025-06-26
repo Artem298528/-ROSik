@@ -40,3 +40,5 @@
 
 
 
+Больше про основы робота тут:
+https://github.com/stepanburmistrov/ROSik
